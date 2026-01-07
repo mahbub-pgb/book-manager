@@ -67,8 +67,8 @@ class BookPostType
             'hierarchical' => false,
             'menu_position' => 5,
             'menu_icon' => 'dashicons-book',
-            'supports' => ['title', 'editor', 'thumbnail', 'excerpt'],
-            'show_in_rest' => true,
+            'supports' => ['title', 'thumbnail', 'excerpt'],
+            'show_in_rest' => false,
         ];
 
         register_post_type('book', $args);
