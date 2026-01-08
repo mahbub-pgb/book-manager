@@ -43,6 +43,7 @@ class DatabaseManager
             bio text,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            image_url varchar(500),
             PRIMARY KEY (id),
             KEY name (name)
         ) {$charset_collate};";
@@ -90,33 +91,33 @@ class DatabaseManager
     /**
      * Insert author
      */
-    public function insertAuthor($name, $bio = '')
-    {
-        $result = $this->wpdb->insert(
-            $this->authorsTable,
+    public function insertAuthor($name, $bio, $image_url = '') {
+        global $wpdb;
+        return $wpdb->insert(
+            $wpdb->prefix . 'book_authors',
             [
                 'name' => $name,
-                'bio' => $bio
+                'bio' => $bio,
+                'image_url' => $image_url
             ],
-            ['%s', '%s']
+            ['%s', '%s', '%s']
         );
-
-        return $result ? $this->wpdb->insert_id : false;
     }
 
     /**
      * Update author
      */
-    public function updateAuthor($id, $name, $bio = '')
-    {
-        return $this->wpdb->update(
-            $this->authorsTable,
+    public function updateAuthor($id, $name, $bio = '', $image_url = '') {
+        global $wpdb;
+        return $wpdb->update(
+            $wpdb->prefix . 'book_authors',
             [
                 'name' => $name,
-                'bio' => $bio
+                'bio' => $bio,
+                'image_url' => $image_url
             ],
             ['id' => $id],
-            ['%s', '%s'],
+            ['%s', '%s', '%s'],
             ['%d']
         );
     }

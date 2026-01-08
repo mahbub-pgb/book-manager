@@ -45,6 +45,9 @@ class AdminPages
                 return;
             }
 
+            // Enqueue WordPress media uploader
+            wp_enqueue_media();
+
             // ------------------
             // Styles
             // ------------------
@@ -178,7 +181,7 @@ class AdminPages
     }
 
     /**
-     * Render authors list table
+     * Render authors list table with images
      */
     private function renderAuthorsListTable()
     {
@@ -201,6 +204,7 @@ class AdminPages
                 <thead>
                     <tr>
                         <th><?php _e('ID', 'book-manager'); ?></th>
+                        <th><?php _e('Image', 'book-manager'); ?></th>
                         <th><?php _e('Name', 'book-manager'); ?></th>
                         <th><?php _e('Bio', 'book-manager'); ?></th>
                         <th data-orderable="false"><?php _e('Actions', 'book-manager'); ?></th>
@@ -209,12 +213,21 @@ class AdminPages
                 <tbody>
                     <?php if (empty($authors)): ?>
                         <tr>
-                            <td colspan="4"><?php _e('No authors found.', 'book-manager'); ?></td>
+                            <td colspan="5"><?php _e('No authors found.', 'book-manager'); ?></td>
                         </tr>
                     <?php else: ?>
                         <?php foreach ($authors as $author): ?>
                             <tr>
                                 <td><?php echo esc_html($author->id); ?></td>
+                                <td>
+                                    <?php if (!empty($author->image_url)): ?>
+                                        <img src="<?php echo esc_url($author->image_url); ?>" 
+                                             alt="<?php echo esc_attr($author->name); ?>" 
+                                             style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
+                                    <?php else: ?>
+                                        <span style="color: #999;">—</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td><strong><?php echo esc_html($author->name); ?></strong></td>
                                 <td><?php echo esc_html(wp_trim_words($author->bio, 15)); ?></td>
                                 <td>
@@ -237,7 +250,7 @@ class AdminPages
     }
 
     /**
-     * Render add author form
+     * Render add author form with image upload
      */
     private function renderAddAuthorForm()
     {
@@ -247,6 +260,8 @@ class AdminPages
             <form method="post" action="<?php echo admin_url('admin-post.php'); ?>">
                 <?php wp_nonce_field('add_author_nonce'); ?>
                 <input type="hidden" name="action" value="add_author">
+                <input type="hidden" name="image_url" id="author_image_url" value="">
+                
                 <table class="form-table">
                     <tr>
                         <th><label for="name"><?php _e('Name', 'book-manager'); ?> <span style="color:red;">*</span></label></th>
@@ -255,6 +270,20 @@ class AdminPages
                     <tr>
                         <th><label for="bio"><?php _e('Bio', 'book-manager'); ?></label></th>
                         <td><textarea id="bio" name="bio" rows="5" class="large-text"></textarea></td>
+                    </tr>
+                    <tr>
+                        <th><label><?php _e('Author Image', 'book-manager'); ?></label></th>
+                        <td>
+                            <div id="author-image-preview" style="margin-bottom: 10px;">
+                                <img src="" style="max-width: 150px; max-height: 150px; display: none; border: 1px solid #ddd; padding: 5px;">
+                            </div>
+                            <button type="button" class="button" id="upload_author_image_button">
+                                <?php _e('Upload Image', 'book-manager'); ?>
+                            </button>
+                            <button type="button" class="button" id="remove_author_image_button" style="display: none;">
+                                <?php _e('Remove Image', 'book-manager'); ?>
+                            </button>
+                        </td>
                     </tr>
                 </table>
                 <p class="submit">
@@ -269,7 +298,7 @@ class AdminPages
     }
 
     /**
-     * Render edit author form
+     * Render edit author form with image upload
      */
     private function renderEditAuthorForm($author_id)
     {
@@ -284,6 +313,8 @@ class AdminPages
                 <?php wp_nonce_field('edit_author_nonce'); ?>
                 <input type="hidden" name="action" value="edit_author">
                 <input type="hidden" name="id" value="<?php echo esc_attr($author->id); ?>">
+                <input type="hidden" name="image_url" id="author_image_url" value="<?php echo esc_attr($author->image_url); ?>">
+                
                 <table class="form-table">
                     <tr>
                         <th><label for="name"><?php _e('Name', 'book-manager'); ?> <span style="color:red;">*</span></label></th>
@@ -292,6 +323,21 @@ class AdminPages
                     <tr>
                         <th><label for="bio"><?php _e('Bio', 'book-manager'); ?></label></th>
                         <td><textarea id="bio" name="bio" rows="5" class="large-text"><?php echo esc_textarea($author->bio); ?></textarea></td>
+                    </tr>
+                    <tr>
+                        <th><label><?php _e('Author Image', 'book-manager'); ?></label></th>
+                        <td>
+                            <div id="author-image-preview" style="margin-bottom: 10px;">
+                                <img src="<?php echo esc_url($author->image_url); ?>" 
+                                     style="max-width: 150px; max-height: 150px; <?php echo empty($author->image_url) ? 'display: none;' : ''; ?> border: 1px solid #ddd; padding: 5px;">
+                            </div>
+                            <button type="button" class="button" id="upload_author_image_button">
+                                <?php _e('Upload Image', 'book-manager'); ?>
+                            </button>
+                            <button type="button" class="button" id="remove_author_image_button" style="<?php echo empty($author->image_url) ? 'display: none;' : ''; ?>">
+                                <?php _e('Remove Image', 'book-manager'); ?>
+                            </button>
+                        </td>
                     </tr>
                 </table>
                 <p class="submit">
@@ -443,7 +489,9 @@ class AdminPages
         <?php
     }
 
-    // Handler methods for form submissions
+    /**
+     * Handle add author with image
+     */
     public function handleAddAuthor()
     {
         check_admin_referer('add_author_nonce');
@@ -453,12 +501,16 @@ class AdminPages
 
         $name = sanitize_text_field($_POST['name']);
         $bio = sanitize_textarea_field($_POST['bio']);
+        $image_url = esc_url_raw($_POST['image_url']);
 
-        $this->db->insertAuthor($name, $bio);
+        $this->db->insertAuthor($name, $bio, $image_url);
         wp_redirect(admin_url('admin.php?page=book-authors&message=added'));
         exit;
     }
 
+    /**
+     * Handle edit author with image
+     */
     public function handleEditAuthor()
     {
         check_admin_referer('edit_author_nonce');
@@ -469,8 +521,9 @@ class AdminPages
         $id = intval($_POST['id']);
         $name = sanitize_text_field($_POST['name']);
         $bio = sanitize_textarea_field($_POST['bio']);
+        $image_url = esc_url_raw($_POST['image_url']);
 
-        $this->db->updateAuthor($id, $name, $bio);
+        $this->db->updateAuthor($id, $name, $bio, $image_url);
         wp_redirect(admin_url('admin.php?page=book-authors&message=updated'));
         exit;
     }

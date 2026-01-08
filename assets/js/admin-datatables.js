@@ -6,7 +6,7 @@ jQuery(document).ready(function($) {
             responsive: true,
             pageLength: 25,
             lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
-            order: [[1, 'asc']], // Sort by Name column
+            order: [[2, 'asc']], // Sort by Name column (changed from 1 to 2)
             columnDefs: [
                 { 
                     targets: -1, // Actions column
@@ -18,7 +18,13 @@ jQuery(document).ready(function($) {
                     width: '60px'
                 },
                 {
-                    targets: 1, // Name column
+                    targets: 1, // Image column (NEW)
+                    width: '80px',
+                    orderable: false,
+                    searchable: false
+                },
+                {
+                    targets: 2, // Name column (changed from 1 to 2)
                     width: '200px'
                 }
             ],
@@ -99,4 +105,47 @@ jQuery(document).ready(function($) {
         }
     });
     
+});
+
+// Media Uploader for Author Images
+jQuery(document).ready(function($) {
+    var mediaUploader;
+    
+    $('#upload_author_image_button').on('click', function(e) {
+        e.preventDefault();
+        
+        // If the uploader object has already been created, reopen the dialog
+        if (mediaUploader) {
+            mediaUploader.open();
+            return;
+        }
+        
+        // Create the media uploader
+        mediaUploader = wp.media({
+            title: 'Choose Author Image',
+            button: {
+                text: 'Use this image'
+            },
+            multiple: false
+        });
+        
+        // When an image is selected, run a callback
+        mediaUploader.on('select', function() {
+            var attachment = mediaUploader.state().get('selection').first().toJSON();
+            $('#author_image_url').val(attachment.url);
+            $('#author-image-preview img').attr('src', attachment.url).show();
+            $('#remove_author_image_button').show();
+        });
+        
+        // Open the uploader dialog
+        mediaUploader.open();
+    });
+    
+    // Remove image button
+    $('#remove_author_image_button').on('click', function(e) {
+        e.preventDefault();
+        $('#author_image_url').val('');
+        $('#author-image-preview img').attr('src', '').hide();
+        $(this).hide();
+    });
 });
