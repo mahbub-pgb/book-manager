@@ -214,5 +214,8 @@ class MetaBoxes
                 update_post_meta($post_id, '_' . $field, sanitize_text_field($_POST[$field]));
             }
         }
+
+        // Save the user ID who added the book
+        update_post_meta($post_id, '_book_added_by', get_current_user_id());
     }
 }

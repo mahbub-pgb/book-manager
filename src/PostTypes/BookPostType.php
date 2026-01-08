@@ -1,6 +1,7 @@
 <?php
-
 namespace BookManager\PostTypes;
+
+use BookManager\Database\DatabaseManager;
 
 /**
  * Book Custom Post Type
@@ -8,6 +9,7 @@ namespace BookManager\PostTypes;
 class BookPostType
 {
     private static $instance = null;
+    private $db;
 
     public static function getInstance()
     {
@@ -19,7 +21,17 @@ class BookPostType
 
     private function __construct()
     {
+        $this->db = DatabaseManager::getInstance();
         add_action('init', [$this, 'register']);
+        
+        // Add custom columns to the Books admin list
+        add_filter('manage_book_posts_columns', [$this, 'addCustomColumns']);
+        add_action('manage_book_posts_custom_column', [$this, 'renderCustomColumns'], 10, 2);
+        add_filter('manage_edit-book_sortable_columns', [$this, 'makeSortableColumns']);
+
+        add_action('after_setup_theme', function () {
+            add_post_type_support('book', 'thumbnail');
+        });
     }
 
     /**
@@ -68,9 +80,129 @@ class BookPostType
             'menu_position' => 5,
             'menu_icon' => 'dashicons-book',
             'supports' => ['title', 'thumbnail', 'excerpt'],
-            'show_in_rest' => false,
+            'show_in_rest' => true,
         ];
 
         register_post_type('book', $args);
+    }
+
+    /**
+     * Add custom columns to Books list
+     */
+    public function addCustomColumns($columns)
+    {
+        // Remove the date column temporarily
+        $date = $columns['date'];
+        unset($columns['date']);
+
+        // Add custom columns
+        $columns['book_cover'] = __('Cover', 'book-manager');
+        $columns['book_author'] = __('Author', 'book-manager');
+        $columns['book_publisher'] = __('Publisher', 'book-manager');
+        $columns['book_isbn'] = __('ISBN', 'book-manager');
+        $columns['book_price'] = __('Price', 'book-manager');
+        $columns['book_stock'] = __('Stock', 'book-manager');
+        $columns['book_added_by'] = __('Added By', 'book-manager');
+        
+        // Add date back at the end
+        $columns['date'] = $date;
+
+        return $columns;
+    }
+
+    /**
+     * Render custom column content
+     */
+    public function renderCustomColumns($column, $post_id)
+    {
+        switch ($column) {
+            case 'book_cover':
+                if (has_post_thumbnail($post_id)) {
+                    echo get_the_post_thumbnail($post_id, [50, 70]);
+                } else {
+                    echo '<span style="color: #999;">—</span>';
+                }
+                break;
+
+            case 'book_author':
+                $author_id = get_post_meta($post_id, '_book_author_id', true);
+                if ($author_id) {
+                    $author = $this->db->getAuthor($author_id);
+                    if ($author) {
+                        echo '<strong>' . esc_html($author->name) . '</strong>';
+                    } else {
+                        echo '<span style="color: #999;">—</span>';
+                    }
+                } else {
+                    echo '<span style="color: #999;">—</span>';
+                }
+                break;
+
+            case 'book_publisher':
+                $publisher_id = get_post_meta($post_id, '_book_publisher_id', true);
+                if ($publisher_id) {
+                    $publisher = $this->db->getPublisher($publisher_id);
+                    if ($publisher) {
+                        echo esc_html($publisher->name);
+                    } else {
+                        echo '<span style="color: #999;">—</span>';
+                    }
+                } else {
+                    echo '<span style="color: #999;">—</span>';
+                }
+                break;
+
+            case 'book_isbn':
+                $isbn = get_post_meta($post_id, '_book_isbn', true);
+                echo $isbn ? '<code>' . esc_html($isbn) . '</code>' : '<span style="color: #999;">—</span>';
+                break;
+
+            case 'book_price':
+                $price = get_post_meta($post_id, '_book_price', true);
+                if ($price) {
+                    echo '<strong>$' . number_format((float)$price, 2) . '</strong>';
+                } else {
+                    echo '<span style="color: #999;">—</span>';
+                }
+                break;
+
+            case 'book_stock':
+                $stock = get_post_meta($post_id, '_book_stock_quantity', true);
+                if ($stock !== '') {
+                    $stock_int = intval($stock);
+                    $color = $stock_int > 10 ? 'green' : ($stock_int > 0 ? 'orange' : 'red');
+                    echo '<span style="color: ' . $color . '; font-weight: bold;">' . esc_html($stock) . '</span>';
+                } else {
+                    echo '<span style="color: #999;">—</span>';
+                }
+                break;
+
+            case 'book_added_by':
+                $user_id = get_post_meta($post_id, '_book_added_by', true);
+                if ($user_id) {
+                    $user = get_userdata($user_id);
+                    if ($user) {
+                        echo esc_html($user->display_name);
+                    } else {
+                        echo '<span style="color: #999;">Unknown</span>';
+                    }
+                } else {
+                    echo '<span style="color: #999;">—</span>';
+                }
+                break;
+        }
+    }
+
+    /**
+     * Make certain columns sortable
+     */
+    public function makeSortableColumns($columns)
+    {
+        $columns['book_author'] = 'book_author';
+        $columns['book_publisher'] = 'book_publisher';
+        $columns['book_price'] = 'book_price';
+        $columns['book_stock'] = 'book_stock';
+        
+        return $columns;
     }
 }

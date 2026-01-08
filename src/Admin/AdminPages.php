@@ -24,12 +24,139 @@ class AdminPages
     {
         $this->db = DatabaseManager::getInstance();
         add_action('admin_menu', [$this, 'addMenuPages']);
+        add_action('pre_get_posts', [$this, 'book_manager_filter_books_by_user']);
         add_action('admin_post_add_author', [$this, 'handleAddAuthor']);
         add_action('admin_post_edit_author', [$this, 'handleEditAuthor']);
         add_action('admin_post_delete_author', [$this, 'handleDeleteAuthor']);
         add_action('admin_post_add_publisher', [$this, 'handleAddPublisher']);
         add_action('admin_post_edit_publisher', [$this, 'handleEditPublisher']);
         add_action('admin_post_delete_publisher', [$this, 'handleDeletePublisher']);
+        
+        // Enqueue DataTables scripts and styles
+        add_action('admin_enqueue_scripts', [$this, 'enqueueDataTablesAssets']);
+    }
+
+    /**
+     * Enqueue DataTables CSS and JS
+     */
+    public function enqueueDataTablesAssets($hook)
+    {
+        // Only load on our specific admin pages
+        if ($hook !== 'book_page_book-authors' && $hook !== 'book_page_book-publishers') {
+            return;
+        }
+
+        // Enqueue DataTables CSS from CDN
+        wp_enqueue_style(
+            'datatables-css',
+            'https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css',
+            [],
+            '1.13.7'
+        );
+
+        // Enqueue DataTables responsive CSS
+        wp_enqueue_style(
+            'datatables-responsive-css',
+            'https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css',
+            ['datatables-css'],
+            '2.5.0'
+        );
+
+        wp_enqueue_style(
+            'style',
+            plugins_url(
+                'assets/css/style.css',
+                __FILE__
+            ),
+            [ 'datatables-css' ],
+            '2.5.0'
+        );
+
+
+        // Enqueue DataTables JS from CDN
+        wp_enqueue_script(
+            'datatables-js',
+            'https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js',
+            ['jquery'],
+            '1.13.7',
+            true
+        );
+
+        // Enqueue DataTables responsive JS
+        wp_enqueue_script(
+            'datatables-responsive-js',
+            'https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js',
+            ['datatables-js'],
+            '2.5.0',
+            true
+        );
+
+        // Enqueue custom initialization script
+        wp_enqueue_script(
+            'book-manager-datatables',
+            plugins_url('assets/js/admin-datatables.js', dirname(__FILE__, 2)),
+            ['datatables-js'],
+            '1.0.0',
+            true
+        );
+
+        // Add custom CSS for better WordPress integration
+        wp_add_inline_style('datatables-css', '
+            .dataTables_wrapper {
+                margin-top: 20px;
+            }
+            .dataTables_filter input {
+                border: 1px solid #8c8f94;
+                border-radius: 4px;
+                padding: 5px 10px;
+            }
+            .dataTables_length select {
+                border: 1px solid #8c8f94;
+                border-radius: 4px;
+                padding: 3px 8px;
+            }
+            table.dataTable thead th {
+                background: #f0f0f1;
+                font-weight: 600;
+            }
+            .dataTables_wrapper .dataTables_paginate .paginate_button {
+                padding: 5px 10px;
+                margin: 0 2px;
+                border: 1px solid #8c8f94;
+                border-radius: 3px;
+                background: #fff;
+            }
+            .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+                background: #2271b1;
+                color: #fff !important;
+                border-color: #2271b1;
+            }
+            .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+                background: #f0f0f1;
+                border-color: #8c8f94;
+            }
+        ');
+    }
+
+    function book_manager_filter_books_by_user( $query ) {
+        if ( ! is_admin() || ! $query->is_main_query() ) {
+            return;
+        }
+
+        if ( $query->get( 'post_type' ) !== 'book' ) {
+            return;
+        }
+
+        if ( current_user_can( 'manage_options' ) ) {
+            return;
+        }
+
+        $query->set( 'meta_query', [
+            [
+                'key'   => '_book_added_by',
+                'value' => get_current_user_id(),
+            ]
+        ] );
     }
 
     /**
@@ -110,13 +237,13 @@ class AdminPages
                 </div>
             <?php endif; ?>
 
-            <table class="wp-list-table widefat fixed striped">
+            <table id="authors-table" class="wp-list-table widefat fixed striped">
                 <thead>
                     <tr>
                         <th><?php _e('ID', 'book-manager'); ?></th>
                         <th><?php _e('Name', 'book-manager'); ?></th>
                         <th><?php _e('Bio', 'book-manager'); ?></th>
-                        <th><?php _e('Actions', 'book-manager'); ?></th>
+                        <th data-orderable="false"><?php _e('Actions', 'book-manager'); ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -238,14 +365,14 @@ class AdminPages
                 </div>
             <?php endif; ?>
 
-            <table class="wp-list-table widefat fixed striped">
+            <table id="publishers-table" class="wp-list-table widefat fixed striped">
                 <thead>
                     <tr>
                         <th><?php _e('ID', 'book-manager'); ?></th>
                         <th><?php _e('Name', 'book-manager'); ?></th>
                         <th><?php _e('Address', 'book-manager'); ?></th>
                         <th><?php _e('Website', 'book-manager'); ?></th>
-                        <th><?php _e('Actions', 'book-manager'); ?></th>
+                        <th data-orderable="false"><?php _e('Actions', 'book-manager'); ?></th>
                     </tr>
                 </thead>
                 <tbody>
