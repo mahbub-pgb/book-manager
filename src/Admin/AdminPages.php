@@ -39,104 +39,64 @@ class AdminPages
     /**
      * Enqueue DataTables CSS and JS
      */
-    public function enqueueDataTablesAssets($hook)
-    {
-        // Only load on our specific admin pages
-        if ($hook !== 'book_page_book-authors' && $hook !== 'book_page_book-publishers') {
-            return;
+        public function enqueueDataTablesAssets($hook) {
+            // Load only on Book admin sub-pages
+            if (strpos($hook, 'book_page_book-') === false) {
+                return;
+            }
+
+            // ------------------
+            // Styles
+            // ------------------
+            wp_enqueue_style(
+                'datatables-css',
+                'https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css',
+                [],
+                '1.13.7'
+            );
+
+            wp_enqueue_style(
+                'datatables-responsive-css',
+                'https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css',
+                ['datatables-css'],
+                '2.5.0'
+            );
+
+            wp_enqueue_style(
+                'book-style',
+                BOOK_MANAGER_PLUGIN_URL . 'assets/css/style.css',
+                ['datatables-css'],
+                BOOK_MANAGER_VERSION
+            );
+
+            // ------------------
+            // Scripts
+            // ------------------
+            wp_enqueue_script(
+                'datatables-js',
+                'https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js',
+                ['jquery'],
+                '1.13.7',
+                true
+            );
+
+            wp_enqueue_script(
+                'datatables-responsive-js',
+                'https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js',
+                ['datatables-js'],
+                '2.5.0',
+                true
+            );
+
+            wp_enqueue_script(
+                'book-manager-datatables',
+                BOOK_MANAGER_PLUGIN_URL . 'assets/js/admin-datatables.js',
+                ['datatables-js'],
+                BOOK_MANAGER_VERSION,
+                true
+            );                   
         }
 
-        // Enqueue DataTables CSS from CDN
-        wp_enqueue_style(
-            'datatables-css',
-            'https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css',
-            [],
-            '1.13.7'
-        );
-
-        // Enqueue DataTables responsive CSS
-        wp_enqueue_style(
-            'datatables-responsive-css',
-            'https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css',
-            ['datatables-css'],
-            '2.5.0'
-        );
-
-        wp_enqueue_style(
-            'style',
-            plugins_url(
-                'assets/css/style.css',
-                __FILE__
-            ),
-            [ 'datatables-css' ],
-            '2.5.0'
-        );
-
-
-        // Enqueue DataTables JS from CDN
-        wp_enqueue_script(
-            'datatables-js',
-            'https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js',
-            ['jquery'],
-            '1.13.7',
-            true
-        );
-
-        // Enqueue DataTables responsive JS
-        wp_enqueue_script(
-            'datatables-responsive-js',
-            'https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js',
-            ['datatables-js'],
-            '2.5.0',
-            true
-        );
-
-        // Enqueue custom initialization script
-        wp_enqueue_script(
-            'book-manager-datatables',
-            plugins_url('assets/js/admin-datatables.js', dirname(__FILE__, 2)),
-            ['datatables-js'],
-            '1.0.0',
-            true
-        );
-
-        // Add custom CSS for better WordPress integration
-        wp_add_inline_style('datatables-css', '
-            .dataTables_wrapper {
-                margin-top: 20px;
-            }
-            .dataTables_filter input {
-                border: 1px solid #8c8f94;
-                border-radius: 4px;
-                padding: 5px 10px;
-            }
-            .dataTables_length select {
-                border: 1px solid #8c8f94;
-                border-radius: 4px;
-                padding: 3px 8px;
-            }
-            table.dataTable thead th {
-                background: #f0f0f1;
-                font-weight: 600;
-            }
-            .dataTables_wrapper .dataTables_paginate .paginate_button {
-                padding: 5px 10px;
-                margin: 0 2px;
-                border: 1px solid #8c8f94;
-                border-radius: 3px;
-                background: #fff;
-            }
-            .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-                background: #2271b1;
-                color: #fff !important;
-                border-color: #2271b1;
-            }
-            .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
-                background: #f0f0f1;
-                border-color: #8c8f94;
-            }
-        ');
-    }
 
     function book_manager_filter_books_by_user( $query ) {
         if ( ! is_admin() || ! $query->is_main_query() ) {

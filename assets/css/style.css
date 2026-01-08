@@ -1,0 +1,25 @@
+.dataTables_wrapper {
+ 	margin-top: 20px;
+}
+.dataTables_filter input,
+.dataTables_length select {
+    border: 1px solid #8c8f94;
+    border-radius: 4px;
+    padding: 5px 10px;
+}
+table.dataTable thead th {
+    background: #f0f0f1;
+    font-weight: 600;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+    padding: 5px 10px;
+    margin: 0 2px;
+    border: 1px solid #8c8f94;
+    border-radius: 3px;
+    background: #fff;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+    background: #2271b1;
+    color: #fff !important;
+    border-color: #2271b1;
+}
