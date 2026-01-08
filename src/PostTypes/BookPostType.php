@@ -29,10 +29,51 @@ class BookPostType
         add_action('manage_book_posts_custom_column', [$this, 'renderCustomColumns'], 10, 2);
         add_filter('manage_edit-book_sortable_columns', [$this, 'makeSortableColumns']);
 
+        add_action('pre_get_posts', [$this, 'filterBooksByCurrentUser']);
+
+
         add_action('after_setup_theme', function () {
             add_post_type_support('book', 'thumbnail');
         });
     }
+
+    /**
+     * Show only books added by current user in admin list
+     */
+    public function filterBooksByCurrentUser($query)
+    {
+        // Only in admin
+        if ( ! is_admin()) {
+            return;
+        }
+
+        // Only main query
+        if ( ! $query->is_main_query() ) {
+            return;
+        }
+
+        // Only Book post type
+        if ( $query->get( 'post_type' ) !== 'book' ) {
+            return;
+        }
+                
+        // Allow admins to see all books
+        if ( current_user_can( 'manage_options' ) ) {
+            return;
+        }
+
+        $current_user_id = get_current_user_id();
+
+        $query->set( 'meta_query', [
+            [
+                'key'     => '_book_added_by',
+                'value'   => $current_user_id,
+                'compare' => '=',
+                'type'    => 'NUMERIC',
+            ],
+        ] );
+    }
+
 
     /**
      * Register the Book custom post type
